@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Productions - Bridging Creativity and Technology</title>
+    <link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+        <!-- Background Overlay Layer -->
+        <div class="background-overlay"></div>
+    <header>
+        <h1>HOUSE PRODUCTIONS</h1>
+        <p class="tagline scroll-fade">Bridging Creativity and Technology</p>
+    </header>
+    
+    <div class="page">
+        <div class="video-frame">
+            <iframe src="https://www.youtube.com/embed/YOUR_VIDEO_ID" frameborder="0" allowfullscreen></iframe>
+        </div>
+        
+        <section id="about" class="section">
+            <div class="section-header scroll-fade">About Me</div>
+            <div class="content-grid">
+                <img src="images/Fletcher_Hiking.JPG" alt="Fletcher Hiking" class="scroll-fade">
+                <div class="text-block scroll-fade">
+                    <p>Hi, I'm Fletcher. I'm passionate about the intersection of traditional media with AI and emerging technologies. My background in founding House Productions
+                        and optimizing technical workflows at Lone Wolf Media has prepared me to explore how artificial intelligence, virtual production, and automated systems can
+                        revolutionize storytelling. I thrive in collaborative environments where technical expertise meets creative vision,
+                        constantly seeking opportunities that combine visual storytelling with cutting-edge innovation.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="services" class="section">
+            <div class="section-header scroll-fade">What I Do</div>
+            <div class="content-grid">
+                <div class="text-block text-left scroll-fade">
+                    <p>As a media storyteller and technical innovator, I bring over 15 years of experience across multiple facets of production—
+                        from capturing authentic moments in the field to refining the final pixel in post. My journey began in location sound recording,
+                        where I developed a keen ear for the auditory elements that breathe life into visual narratives.
+                        This foundation evolved into a comprehensive expertise in post-production leadership, where I now oversee the intricate
+                        processes that transform raw footage into polished content worthy of broadcast on networks like ABC, Discovery, PBS, and Smithsonian Channel.</p>
+                        
+                    <p>Color science and the finishing processes represent the culmination of my technical passion. I specialize in creating efficient workflows that maintain
+                        exceptional quality while meeting demanding delivery schedules. My approach combines technical precision with creative sensitivity—ensuring that the
+                        filmmaker's vision remains intact through every stage of production. Whether I'm calibrating complex color grades, implementing streamlined
+                        media management systems, or training teams on emerging technologies, I remain committed to elevating content through both technical
+                        excellence and storytelling craftsmanship.</p>
+                </div>
+                <img src="images/workspace_01.jpg" alt="Workspace" class="scroll-fade" style="width: 40%; height: auto;">
+            </div>
+        </section>
+        
+        <section id="portfolio" class="section">
+            <div class="section-header scroll-fade">Selected Work</div>
+            <div class="portfolio-grid scroll-fade">
+                <div class="portfolio-item">
+                    <a href="https://www.hulu.com/series/wild-crime" target="_blank">
+                        <img src="images/wildcrime_S4.jpg" alt="Wild Crime">
+                    </a>
+                    <p>Head of Post | Online Editor</p>
+                </div>
+                <div class="portfolio-item">
+                    <a href="https://www.history.com/shows/the-bermuda-triangle-into-cursed-waters" target="_blank">
+                        <img src="images/BermudaTriangle_S2.jpg" alt="Bermuda Triangle">
+                    </a>
+                    <p>Head of Post | Online Editor | Colorist</p>
+                </div>
+                <div class="portfolio-item">
+                    <a href="https://www.smithsonianchannel.com/shows/americas-hidden-stories" target="_blank">
+                        <img src="images/AmericasHiddenStories_S1-3.jpg" alt="America's Hidden Stories">
+                    </a>
+                    <p>Head of Post | Online Editor | Colorist</p>
+                </div>
+            </div>
+            <div class="portfolio-grid scroll-fade">
+                <div class="portfolio-item">
+                    <a href="https://www.pbs.org/wgbh/americanexperience/films/war-disco/" target="_blank">
+                        <img src="images/TheWarOnDisco.jpg" alt="The War on Disco">
+                    </a>
+                    <p>Head of Post | Online Editor | Colorist</p>
+                </div>
+                <div class="portfolio-item">
+                    <a href="https://curiositystream.com/dougtotherescue/index.html" target="_blank">
+                        <img src="images/dougToTheRescue.jpg" alt="Doug to the Rescue">
+                    </a>
+                    <p>Head of Post | Series Editor | Colorist</p>
+                </div>
+                <div class="portfolio-item">
+                    <a href="https://www.thekidswelose.com/" target="_blank">
+                        <img src="images/TheKidsWeLose.jpg" alt="The Kids We Lose">
+                    </a>
+                    <p>Head of Post | Online Editor | Colorist</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="contact" class="contact">
+            <h2>Contact</h2>
+            <form action="https://formsubmit.co/el/migudi" method="POST">
+                <input type="text" name="name" placeholder="Your Name" required>
+                <input type="email" name="email" placeholder="Your Email" required>
+                <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
+            
+                <!-- Google reCAPTCHA v2 Checkbox -->
+                <div class="g-recaptcha" data-sitekey="6LdHNOcqAAAAAMeX84z-Kthx-Fly-JBgNZfW2S33"></div>
+            
+                <!-- Hidden Fields -->
+                <input type="hidden" name="_captcha" value="true">
+                <input type="hidden" name="_next" value="https://yourwebsite.com/thank-you.html">
+            
+                <button type="submit">Send Message</button>
+            </form>
+            
+            <!-- Load Google reCAPTCHA Script -->
+            <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        </section>
+    </div>
+    
+    <footer class="contact scroll-fade">
+        <p>&copy; 2025 House Productions. All Rights Reserved.</p>
+    </footer>
+</body>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const observerOptions = {
+            root: null,
+            rootMargin: "0px",
+            threshold: 0.2
+        };
+
+        // Select all elements with scroll-fade class
+        const elements = document.querySelectorAll(".scroll-fade");
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    let index = Array.from(elements).indexOf(entry.target);
+                    entry.target.style.transitionDelay = `${index * 0.1}s`; // Stagger effect
+                    entry.target.classList.add("visible");
+                    observer.unobserve(entry.target); // Stop observing once element is revealed
+                }
+            });
+        }, observerOptions);
+
+        elements.forEach((el) => {
+            observer.observe(el);
+        });
+    });
+</script>
+</html>
