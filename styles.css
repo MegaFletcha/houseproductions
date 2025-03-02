@@ -186,3 +186,86 @@ a img:hover {
     opacity: 1;
     transform: translateY(0);
 }
+
+
+/* Mobile Layout Adjustments */
+@media (max-width: 768px) {  
+    /* Reduce padding and margins */
+    body {
+        font-size: 16px;
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Adjust header size */
+    header {
+        height: 20vh; /* Make the header shorter on mobile */
+        padding: 20px;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 6vw; /* Reduce font size */
+    }
+
+    /* Make the layout single-column */
+    .content-grid {
+        display: block; /* Stack elements vertically */
+        text-align: center;
+    }
+
+    .content-grid img {
+        width: 80%; /* Make images smaller */
+        margin-bottom: 20px;
+    }
+
+    .text-block {
+        width: 100%;
+        padding: 0 10px;
+    }
+
+    /* Make portfolio items stack in one column */
+    .portfolio-grid {
+        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .portfolio-item {
+        width: 90%; /* Make portfolio images take up more space */
+        margin-bottom: 20px;
+    }
+
+    /* Adjust contact form */
+    .contact form {
+        width: 90%;
+    }
+}
+
+/* Smaller Phones (Less than 480px) */
+@media (max-width: 480px) {
+    h1 {
+        font-size: 7vw;
+    }
+
+    .content-grid img {
+        width: 100%;
+    }
+}
+
+/* Default (Desktop) Image Size */
+.workspace-image {
+    width: 40%;  /* Keep the existing desktop width */
+    max-width: 600px; /* Prevent it from getting too large */
+    height: auto;
+    display: block;
+    margin: 0 auto; /* Centers the image */
+}
+
+/* Mobile-Specific Adjustments */
+@media (max-width: 768px) {
+    .workspace-image {
+        width: 80%;  /* Increase size for better mobile display */
+        max-width: 350px; /* Keeps the image from being too large */
+    }
+}
