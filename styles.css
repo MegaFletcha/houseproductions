@@ -34,7 +34,7 @@ body {
 header {
     background: linear-gradient(to bottom, #FFD633 50%, #E6A700 100%);
     color: #121212;
-    padding: 44px 20px;
+    padding: 20px 20px;
     position: relative;
     text-align: center;
     overflow: hidden;
@@ -42,7 +42,7 @@ header {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 34vh;
+    height: 25vh;
 }
 
 header::after {
@@ -87,17 +87,6 @@ h1::after {
     z-index: 1;
 }
 
-.subtagline {
-    font-size: 1.4vw;
-    font-weight: 600;
-    color: #121212;
-    margin-top: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.35em;
-    position: relative;
-    z-index: 1;
-}
-
 .video-frame {
     width: 100%;
     padding-top: 56.25%; /* 16:9 Aspect Ratio */
@@ -133,7 +122,8 @@ h1::after {
 
 .content-grid img {
     width: 30%;
-    height: auto;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
     border-radius: 10px;
     background: #444;
 }
@@ -146,13 +136,21 @@ h1::after {
     text-align: left;
 }
 
+.content-grid + .content-grid {
+    margin-top: 40px;
+}
+
 .section-footer {
     margin-top: 30px;
-    text-align: left;
+    margin-bottom: 100px;
+    text-align: right;
+    min-height: 50px;
 }
 
 .section-footer a {
     display: inline-block;
+    position: absolute;
+    right: 0;
     color: #121212;
     background: #FFD633;
     padding: 12px 28px;
@@ -171,7 +169,7 @@ h1::after {
 /* Services / discipline cards */
 .services-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
 }
 
@@ -198,10 +196,18 @@ h1::after {
 }
 
 .service-card p {
-    margin: 0;
+    margin: 0 0 14px 0;
     font-size: 0.95em;
     line-height: 1.6;
     color: #ddd;
+}
+
+.service-card .service-tools {
+    margin: 0;
+    font-size: 0.85em;
+    line-height: 1.5;
+    color: #999;
+    letter-spacing: 0.02em;
 }
 
 /* Portfolio */
@@ -242,7 +248,7 @@ a img:hover {
 /* Credits */
 .credits-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
 }
 
@@ -260,6 +266,60 @@ a img:hover {
     font-size: 0.95em;
     line-height: 1.6;
     color: #ddd;
+}
+
+.credit-group a {
+    color: #ddd;
+    text-decoration: none;
+}
+
+.credit-group a:hover {
+    color: #FFD633;
+    text-decoration: underline;
+}
+
+/* How I Work process list */
+.process-list {
+    list-style: none;
+    counter-reset: process;
+    padding: 0;
+    margin: 0;
+    max-width: 700px;
+}
+
+.process-list li {
+    counter-increment: process;
+    position: relative;
+    padding-left: 60px;
+    margin-bottom: 24px;
+    font-size: 1em;
+    line-height: 1.6;
+    color: #ddd;
+}
+
+.process-list li:last-child {
+    margin-bottom: 0;
+}
+
+.process-list li::before {
+    content: counter(process);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    background: #FFD633;
+    color: #121212;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.process-list li strong {
+    color: #fff;
 }
 
 /* Contact */
@@ -282,6 +342,14 @@ a img:hover {
 
 .contact-email a:hover {
     border-bottom-color: #FFD633;
+}
+
+.contact-note {
+    max-width: 500px;
+    margin: 0 auto 24px auto;
+    font-size: 0.95em;
+    line-height: 1.6;
+    color: #ccc;
 }
 
 .contact form {
@@ -356,10 +424,6 @@ a img:hover {
         font-size: 3.5vw;
     }
 
-    .subtagline {
-        font-size: 3vw;
-    }
-
     .content-grid {
         display: block;
         text-align: center;
@@ -377,6 +441,14 @@ a img:hover {
 
     .section-footer {
         text-align: center;
+    }
+
+    .services-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .credits-grid {
+        grid-template-columns: 1fr;
     }
 
     .portfolio-grid {
