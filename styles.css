@@ -103,6 +103,40 @@ h1::after {
     height: 100%;
 }
 
+/* Reel + News two-column hero */
+.reel-news {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 40px;
+    align-items: center;
+    margin: 60px 0;
+}
+
+.reel-news .video-frame {
+    margin: 0;
+}
+
+.news-update h2 {
+    margin: 16px 0 8px 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #FFD633;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.news-update img {
+    width: 100%;
+    border-radius: 10px;
+    display: block;
+}
+
+.news-update p {
+    margin: 0;
+    font-size: 0.95em;
+    color: #ccc;
+}
+
 .section {
     margin-bottom: 100px;
 }
@@ -427,6 +461,10 @@ a img:hover {
     .content-grid {
         display: block;
         text-align: center;
+    }
+
+    .reel-news {
+        grid-template-columns: 1fr;
     }
 
     .content-grid img {
