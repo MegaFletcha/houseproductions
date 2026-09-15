@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EMERGENT — prototype 01 // inside</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  canvas{display:block;width:100vw;height:100vh}
+  #hint{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);
+        font:10px/1.7 ui-monospace,Menlo,monospace;letter-spacing:.24em;
+        color:#7fa8c8;text-transform:uppercase;white-space:nowrap;
+        opacity:0;transition:opacity 3s ease;pointer-events:none;text-align:center}
+  #hint.on{opacity:.5}
+  #enter{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+         background:#000;color:#8fb6d6;font:11px/2.4 ui-monospace,Menlo,monospace;
+         letter-spacing:.3em;text-transform:uppercase;cursor:pointer;z-index:10;
+         text-align:center;padding:0 20px;flex-direction:column;gap:8px}
+  #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+       background:#000;color:#c07a7a;font:12px/2 ui-monospace,Menlo,monospace;
+       padding:40px;text-align:center;z-index:20;white-space:pre-wrap}
+
+  /* ---------------------------------------------------------- control panel */
+  #panel{position:fixed;top:0;left:0;height:100%;width:300px;overflow-y:auto;
+         background:rgba(4,7,10,.93);border-right:1px solid #14202c;
+         padding:14px 14px 40px;box-sizing:border-box;z-index:30;
+         font:9px/2 ui-monospace,Menlo,monospace;letter-spacing:.1em;
+         color:#7fa8c8;text-transform:uppercase;transition:transform .22s ease}
+  #panel.hid{transform:translateX(-100%)}
+  #panel h2{font-size:9px;letter-spacing:.24em;color:#5f8bab;margin:16px 0 6px;
+            font-weight:400;border-bottom:1px solid #14202c;padding-bottom:4px}
+  #panel h2:first-of-type{margin-top:6px}
+  .ctl{margin:7px 0 9px}
+  .ctl .lab{display:flex;justify-content:space-between;color:#6d90ab;margin-bottom:2px}
+  .ctl .val{color:#cfe6f7;font-variant-numeric:tabular-nums}
+  .ctl input[type=range]{-webkit-appearance:none;width:100%;height:2px;background:#1b2a38;
+       outline:none;margin:5px 0}
+  .ctl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:9px;
+       border-radius:50%;background:#5f9dc9;cursor:pointer}
+  .ctl input[type=range]::-webkit-slider-thumb:hover{background:#9ed4ff}
+  .meta{color:#3f5a70;font-size:8.5px;letter-spacing:.04em;text-transform:none;line-height:1.6}
+  #toggle{position:fixed;top:10px;left:10px;z-index:40;padding:7px 12px;
+          font:9px/1 ui-monospace,Menlo,monospace;letter-spacing:.2em;text-transform:uppercase;
+          background:rgba(5,8,11,.85);border:1px solid #1b2a38;color:#6d90ab;cursor:pointer;
+          opacity:.25;transition:opacity .3s}
+  #toggle:hover{opacity:1;color:#bfe0f5;border-color:#2f4a63}
+  #meter{position:fixed;top:10px;right:12px;z-index:40;width:200px;display:none;
+         background:rgba(5,8,11,.85);border:1px solid #1b2a38;padding:10px 12px;
+         font:8.5px/2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}
+  #meter.show{display:block}
+  #meter .mRow{display:flex;align-items:center;gap:7px;margin:3px 0}
+  #meter .mLab{width:32px;color:#4e6b82}
+  #meter .mBar{flex:1;height:5px;background:#0d151d;position:relative;overflow:hidden}
+  #meter .mFill{position:absolute;top:0;left:0;height:100%;width:0;background:#3a7fb0}
+  #meter .mVal{width:50px;text-align:right;color:#8fb6d6;font-variant-numeric:tabular-nums}
+  #clip{margin-top:6px;color:#3f5a70;border-top:1px solid #14202c;padding-top:5px}
+  #clip.bad{color:#e2705f;font-weight:700}
+  #chain{color:#3f5a70;font-size:8px;letter-spacing:.02em;text-transform:none;
+         line-height:1.7;margin-top:5px;border-top:1px solid #14202c;padding-top:5px}
+  #vstat{margin-top:6px;color:#3f5a70;border-top:1px solid #14202c;padding-top:5px;line-height:1.6}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+  .chips button{flex:1 1 auto;padding:6px 4px;font:9px/1 ui-monospace,Menlo,monospace;
+       letter-spacing:.1em;text-transform:uppercase;background:#0b1219;border:1px solid #1b2a38;
+       color:#5f819b;cursor:pointer}
+  .chips button:hover{color:#bfe0f5;border-color:#2f4a63}
+  .chips button.on{background:#16334a;border-color:#4382b0;color:#d6ecff}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="toggle">panel</button>
+<div id="meter">
+  <div class="mRow"><span class="mLab">peak</span><span class="mBar"><span class="mFill" id="mPeak"></span></span><span class="mVal" id="vPeak">-</span></div>
+  <div class="mRow"><span class="mLab">rms</span><span class="mBar"><span class="mFill" id="mRms"></span></span><span class="mVal" id="vRms">-</span></div>
+  <div id="clip">idle</div>
+  <div id="vstat"></div>
+  <div id="chain"></div>
+</div>
+
+<div id="panel" class="hid">
+  <h2>look / motion</h2>
+  <div id="grpEmit"></div>
+  <h2>voice / placement</h2>
+  <div id="grpPlace"></div>
+  <h2>reverb (corridor)</h2>
+  <div id="grpVerb"></div>
+  <div class="meta" id="irMeta"></div>
+  <h2>mix</h2>
+  <div id="grpMix"></div>
+  <h2>headroom / dynamics</h2>
+  <div id="grpDyn"></div>
+  <h2>envelope</h2>
+  <div id="grpEnv"></div>
+  <div class="meta" style="margin-top:14px">
+    <b style="color:#8fb6d6">p</b> panel &middot; <b style="color:#8fb6d6">m</b> mute &middot;
+    <b style="color:#8fb6d6">v</b> speak now.<br>
+    values apply live. voice lines are generated locally by kokoro-82m.
+  </div>
+</div>
+
+<div id="hint">the cursor is your heading &middot; drift is automatic &middot; p panel &middot; c colour &middot; m mute &middot; v speak</div>
+<div id="enter">click to enter<div id="loadmsg" style="font-size:9px;letter-spacing:.2em;color:#3f5a70"></div></div>
+<div id="err"></div>
+
+<script type="module">
+const canvas = document.getElementById('c');
+const errEl  = document.getElementById('err');
+const say = m => { errEl.style.display = 'flex'; errEl.textContent = m; };
+
+if (!navigator.gpu) {
+  say('WebGPU unavailable in this browser.\nChrome 113+ / Edge / Safari 18+ required.');
+  throw new Error('no webgpu');
+}
+const adapter = await navigator.gpu.requestAdapter();
+if (!adapter) { say('No WebGPU adapter on this machine.'); throw new Error('no adapter'); }
+const device = await adapter.requestDevice();
+const ctx    = canvas.getContext('webgpu');
+const format = navigator.gpu.getPreferredCanvasFormat();
+ctx.configure({ device, format, alphaMode: 'opaque' });
+
+// ---------------------------------------------------------------- shader
+const WGSL = /* wgsl */`
+struct U {
+  res : vec4f,   // xy px, z time
+  pos : vec4f,   // camera xyz
+  fwd : vec4f,
+  rgt : vec4f,
+  upv : vec4f,
+  tune : vec4f,  // x black point, y ambient, z volumetric gain, w ao strength
+  // --- colour profile ---
+  stripCol  : vec4f,  // rack LED colour
+  rackCol   : vec4f,  // cabinet surface
+  shellCol  : vec4f,  // concrete shell
+  hazeCol   : vec4f,  // aerial perspective colour
+  castCol   : vec4f,  // post cast, multiplied
+  post      : vec4f,  // x exposure, y tonemap k, z desaturate, w invert
+  stripI    : vec4f,  // x emissive gain, y rack lit gain, z shell lit gain, w ambient lit floor
+};
+@group(0) @binding(0) var<uniform> u : U;
+
+const PERIOD : f32 = 7.0;   // spacing of one rack bay along the corridor
+
+fn sdBox(p : vec3f, b : vec3f) -> f32 {
+  let q = abs(p) - b;
+  return length(max(q, vec3f(0.0))) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+// solid objects: racks both sides, overhead beams, one cross-conduit per bay
+fn sdStructure(p : vec3f) -> f32 {
+  let z = p.z - PERIOD * round(p.z / PERIOD);
+  let rack = sdBox(vec3f(abs(p.x) - 5.2, p.y, z), vec3f(0.95, 2.60, 1.40));
+  let beam = sdBox(vec3f(abs(p.x) - 3.40, p.y - 8.20, z), vec3f(2.60, 0.22, 0.30));
+  return min(rack, beam);
+}
+
+// the shell we are inside of
+fn sdPlanes(p : vec3f) -> f32 {
+  var d = min(p.y + 5.0, 9.0 - p.y);
+  d = min(d, 7.4 - abs(p.x));
+  return d;
+}
+
+fn sdScene(p : vec3f) -> f32 { return min(sdPlanes(p), sdStructure(p)); }
+
+fn calcNormal(p : vec3f) -> vec3f {
+  let e = vec2f(0.0015, 0.0);
+  return normalize(vec3f(
+    sdScene(p + e.xyy) - sdScene(p - e.xyy),
+    sdScene(p + e.yxy) - sdScene(p - e.yxy),
+    sdScene(p + e.yyx) - sdScene(p - e.yyx)
+  ));
+}
+
+// light source: horizontal LED strips on the rack faces, running the length of z.
+// falloff from an infinite line, so it reads as a real source in volumetric accumulation.
+fn stripLight(p : vec3f, t : f32) -> f32 {
+  let dx  = abs(p.x) - 4.25;                                   // 0 on the rack face
+  let dy  = abs(fract(p.y / 2.62 + 0.5) - 0.5) * 2.62;         // 0 at strip height
+  let d   = sqrt(dx * dx + dy * dy);
+  // tighter falloff than before: a light source should drop off fast so that
+  // unlit volume stays black and lit volume stands out. The old 1/(1+0.35d^2)
+  // stayed high across the whole corridor, which is what destroyed contrast.
+  let att = 1.0 / (1.0 + 1.35 * d * d);
+  let pulse = 0.85 + 0.15 * sin(p.z * 0.085 - t * 0.22);       // slow travelling breathing
+  let blink = 0.18 * pow(max(0.0, sin(t * 0.55)), 36.0);       // something far off spins up
+  return att * (pulse + blink);
+}
+
+// How much light reaches p from the strips, cheaply: a handful of samples along
+// the strip line, rejected if the rack body is in the way. Without this the
+// strips light the corridor through solid cabinets.
+fn stripOccluded(p : vec3f, n : vec3f) -> f32 {
+  var vis = 0.0;
+  // sample a few strip positions fore and aft of p
+  for (var k = 0; k < 3; k = k + 1) {
+    let zoff = (f32(k) - 1.0) * 2.4;
+    let lx = select(-4.25, 4.25, p.x >= 0.0);
+    let lp = vec3f(lx, floor(p.y / 2.62 + 0.5) * 2.62, p.z + zoff);
+    let lv = lp - p;
+    let ld = normalize(lv);
+    // skip if the light is behind the surface
+    if (dot(n, ld) <= 0.0) { continue; }
+    // march the ray toward the strip; if it enters the rack, this sample is blocked
+    var blocked = false;
+    var s = 0.06;
+    for (var i = 0; i < 14; i = i + 1) {
+      let d = sdStructure(p + ld * s);
+      if (d < 0.006) { blocked = true; break; }
+      s += max(d, 0.05);
+      if (s > length(lv)) { break; }
+    }
+    if (!blocked) { vis += 1.0; }
+  }
+  return vis / 3.0;
+}
+
+// Cheap ambient occlusion: five fixed offset samples, count how many are inside
+// geometry. Contact darkness in corners and where racks meet the floor is what
+// makes the boxes read as solid instead of as flat panels.
+fn calcAO(p : vec3f, n : vec3f) -> f32 {
+  var occ = 0.0;
+  let sc = 0.22;
+  occ += clamp(sdScene(p + n * sc * 0.5) / (sc * 0.5), 0.0, 1.0);
+  occ += clamp(sdScene(p + normalize(n + vec3f(0.31, -0.42, 0.28)) * sc) / sc, 0.0, 1.0);
+  occ += clamp(sdScene(p + normalize(n + vec3f(-0.36, 0.24, -0.31)) * sc) / sc, 0.0, 1.0);
+  occ += clamp(sdScene(p + normalize(n + vec3f(0.18, 0.44, 0.37)) * sc) / sc, 0.0, 1.0);
+  occ += clamp(sdScene(p + normalize(n + vec3f(-0.22, -0.38, 0.29)) * sc) / sc, 0.0, 1.0);
+  return clamp(occ / 5.0, 0.0, 1.0);
+}
+
+fn hash3(p : vec3f) -> f32 {
+  var q = fract(p * vec3f(0.1031, 0.1030, 0.0973));
+  q += vec3f(dot(q, q.yzx + 33.33));
+  return fract((q.x + q.y) * q.z);
+}
+
+@vertex
+fn vs(@builtin(vertex_index) i : u32) -> @builtin(position) vec4f {
+  var v = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  return vec4f(v[i], 0.0, 1.0);
+}
+
+@fragment
+fn fs(@builtin(position) fc : vec4f) -> @location(0) vec4f {
+  let t  = u.res.z;
+  let uv = vec2f((fc.x * 2.0 - u.res.x) / u.res.y,
+                -(fc.y * 2.0 - u.res.y) / u.res.y);
+  let ro = u.pos.xyz;
+  let rd = normalize(u.fwd.xyz + uv.x * u.rgt.xyz + uv.y * u.upv.xyz);
+
+  var dist = 0.0;
+  var glow = 0.0;
+  var hitAny = false;
+  var hitStruct = false;
+
+  // Ambient is a property of the space, not of the light. It is deliberately very
+  // low now: the old value accumulated over every march step and produced a
+  // constant milk haze across the whole image, which is why nothing had contrast.
+  let AMB = u.tune.y;
+
+  for (var i = 0; i < 200; i = i + 1) {
+    let p  = ro + rd * dist;
+    let dp = sdPlanes(p);
+    let ds = sdStructure(p);
+    let d  = min(dp, ds);
+
+    // volumetric accumulation: only where the strips actually are, and falling off
+    // steeply. Ambient contributes a tiny amount so the far end is not pure black.
+    glow += stripLight(p, t) * exp(-dist * 0.16) * 0.020 * u.tune.z
+          + AMB * 0.00006 * exp(-dist * 0.05);
+
+    if (d < 0.0025) { hitAny = true; hitStruct = ds < 0.01; break; }
+    dist += max(d, 0.004);
+    if (dist > 180.0) { break; }
+  }
+
+  let LIGHT = u.stripCol.xyz;
+  var col = vec3f(0.0);
+
+  if (hitAny) {
+    let p = ro + rd * dist;
+    let n = calcNormal(p);
+    let f = stripLight(p, t);
+    let sx = select(-1.0, 1.0, p.x >= 0.0);
+    let L  = normalize(vec3f(sx, -0.45, 0.35));
+    let nl = max(0.0, dot(n, L));
+    let ao = mix(1.0, calcAO(p, n), u.tune.w);
+    let vis = stripOccluded(p, n);
+
+    if (hitStruct) {
+      // cabinet surface: only the lit side comes up, and only where a strip can
+      // actually reach it. The ambient floor (stripI.w) is what keeps an unlit
+      // surface reading as a surface rather than a hole — small in dark mode,
+      // large in light mode where the room is bright.
+      col = u.rackCol.xyz * (u.stripI.w + u.stripI.y * f * vis * (0.25 + 0.75 * nl)) * ao;
+
+      // emissive strip: this is a light SOURCE, so it is added unlit and at full
+      // strength regardless of occlusion — a strip does not need to be lit by
+      // anything, it is the thing doing the lighting.
+      let dx = abs(abs(p.x) - 4.25);
+      let dy = abs(fract(p.y / 2.62 + 0.5) - 0.5) * 2.62;
+      let onStrip = 1.0 - smoothstep(0.02, 0.13, max(dx, dy));
+      let onFace  = smoothstep(0.0, 0.45, -n.x * sx);
+      col += LIGHT * onStrip * onFace * u.stripI.x;   // emissive core, drives bloom
+
+      let vent = pow(max(0.0, sin(p.y * 11.0)), 6.0);       // fine vent grill
+      col += vec3f(0.02) * vent * f * ao;
+      let seg  = pow(max(0.0, sin(p.z * 2.60)), 8.0);       // node lights along the bay
+      col += LIGHT * seg * f * 0.06 * ao;
+    } else {
+      // shell surface
+      col = u.shellCol.xyz * (u.stripI.w * 1.4 + u.stripI.z * f * vis * (0.30 + 0.70 * nl)) * ao;
+      let grime = 0.5 + 0.5 * hash3(floor(p * 0.9));
+      col *= 0.55 + 0.75 * grime;
+    }
+
+    // aerial perspective — weaker than it was, so the far end darkens into
+    // shadow rather than fading to a flat fog
+    col = mix(col, u.hazeCol.xyz, 1.0 - exp(-dist * 0.022));
+  }
+
+  col += LIGHT * glow;
+
+  let vig = pow(clamp(1.0 - 0.26 * dot(uv, uv), 0.0, 1.0), 1.30);
+  col *= vig;
+  col *= u.post.x;                                 // exposure
+
+  col = vec3f(1.0) - exp(-col * u.post.y);         // tonemap
+  col = pow(max(col, vec3f(0.0)), vec3f(0.4545));  // to display
+  // Black point. Subtracting here is what creates contrast: it pushes the dark end
+  // to true black and leaves only real light.
+  col = max(col - vec3f(u.tune.x), vec3f(0.0)) / max(1e-4, 1.0 - u.tune.x);
+
+  // Light mode is an inversion of the finished image, not a re-lighting: flipping
+  // after the tonemap keeps every ratio and every bit of contrast, so the same
+  // scene reads as dark-on-light. The cast is applied after, so it tints the
+  // picture rather than turning into its complement.
+  col = mix(col, vec3f(1.0) - col, u.post.w);
+
+  col *= u.castCol.xyz;                            // cast
+  col = mix(vec3f(dot(col, vec3f(0.299, 0.587, 0.114))), col, u.post.z); // desaturate
+  col += (hash3(vec3f(fc.xy, t)) - 0.5) / 255.0;   // dither
+
+  return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
+}
+`;
+
+const module_ = device.createShaderModule({ code: WGSL });
+const uniBuf = device.createBuffer({ size: 208, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+const pipeline = device.createRenderPipeline({
+  layout: 'auto',
+  vertex:   { module: module_, entryPoint: 'vs' },
+  fragment: { module: module_, entryPoint: 'fs', targets: [{ format }] },
+  primitive:{ topology: 'triangle-list' },
+});
+const bind = device.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [{ binding: 0, resource: { buffer: uniBuf } }],
+});
+
+// ---------------------------------------------------------------- state
+const U = new Float32Array(44);
+let running = false, t = 0, prev = 0;
+let mx = 0.5, my = 0.5, yaw = 0, pitch = 0;
+let camX = 0, camY = 0, camZ = 0;       // exposed for the audio listener
+let camF = [0,0,1], camU = [0,1,0];
+
+window.addEventListener('mousemove', e => {
+  mx = e.clientX / window.innerWidth;
+  my = e.clientY / window.innerHeight;
+});
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.floor(canvas.clientWidth  * dpr));
+  const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+}
+
+const crs = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const nrm = a => { const l = Math.hypot(a[0],a[1],a[2]) || 1; return [a[0]/l, a[1]/l, a[2]/l]; };
+
+function frame(now) {
+  if (!prev) prev = now;
+  const dt = Math.min(0.05, (now - prev) / 1000);
+  prev = now;
+  t += dt;
+
+  resize();
+
+  // steering: absolute cursor position, heavily damped. no pointer lock, no snap.
+  // Screen-relative — the view points where the cursor is: cursor up looks up,
+  // cursor down looks down. (Was (my - 0.5), which was inverted: the vertical
+  // axis behaved like a yoke, pull back to climb, so cursor down looked up.)
+  const targetYaw   = (mx - 0.5) * P.lookYaw;
+  const targetPitch = (0.5 - my) * P.lookPitch;
+  const k = Math.min(1, dt * 1.5);
+  yaw   += (targetYaw   - yaw)   * k;
+  pitch += (targetPitch - pitch) * k;
+
+  // drift: always forward down the corridor regardless of where you look.
+  // you are not walking. you are being carried.
+  const px = 1.70 * Math.sin(t * 0.115);
+  const py = 1.00 * Math.sin(t * 0.173 + 1.2) + (P.eyeY - 0);
+  const pz = t * P.drift;
+
+  // slow tumble — a mind without inner ear
+  const roll = P.tumble * Math.sin(t * 0.061) + 0.32 * P.tumble * Math.sin(t * 0.27);
+
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const cy = Math.cos(yaw),   sy = Math.sin(yaw);
+  const f = [sy * cp, sp, cy * cp];
+  let r = nrm(crs([0,1,0], f));
+  let u = nrm(crs(f, r));
+  const cr = Math.cos(roll), sr = Math.sin(roll);
+  r = [r[0]*cr - u[0]*sr, r[1]*cr - u[1]*sr, r[2]*cr - u[2]*sr];
+  u = [r[0]*sr + u[0]*cr, r[1]*sr + u[1]*cr, r[2]*sr + u[2]*cr];
+
+  camX = px; camY = py; camZ = pz; camF = f; camU = u;
+
+  U[0] = canvas.width; U[1] = canvas.height; U[2] = t; U[3] = 0;
+  U[4] = px; U[5] = py; U[6] = pz; U[7] = 0;
+  U[8] = f[0]; U[9] = f[1]; U[10] = f[2]; U[11] = 0;
+  U[12] = r[0]; U[13] = r[1]; U[14] = r[2]; U[15] = 0;
+  U[16] = u[0]; U[17] = u[1]; U[18] = u[2]; U[19] = 0;
+  U[20] = P.blackPoint; U[21] = P.ambient; U[22] = P.volGain; U[23] = P.aoStrength;
+  // colour profile
+  const q = PROFILES[P.profile] || PROFILES.cold;
+  U[24] = q.strip[0]; U[25] = q.strip[1]; U[26] = q.strip[2]; U[27] = 0;
+  U[28] = q.rack[0];  U[29] = q.rack[1];  U[30] = q.rack[2];  U[31] = 0;
+  U[32] = q.shell[0]; U[33] = q.shell[1]; U[34] = q.shell[2]; U[35] = 0;
+  U[36] = q.haze[0];  U[37] = q.haze[1];  U[38] = q.haze[2];  U[39] = 0;
+  U[40] = q.cast[0];  U[41] = q.cast[1];  U[42] = q.cast[2];  U[43] = 0;
+  device.queue.writeBuffer(uniBuf, 0, U);
+  device.queue.writeBuffer(uniBuf, 176, new Float32Array([
+    q.exposure, q.tonemap, q.desat, q.invert,
+    q.stripI, q.rackGain, q.shellGain, q.ambLit,
+  ]), 0);
+
+  updateListener();
+  serviceEmitters();
+
+  const enc = device.createCommandEncoder();
+  const pass = enc.beginRenderPass({
+    colorAttachments: [{
+      view: ctx.getCurrentTexture().createView(),
+      clearValue: { r: 0, g: 0, b: 0, a: 1 },
+      loadOp: 'clear', storeOp: 'store',
+    }],
+  });
+  pass.setPipeline(pipeline);
+  pass.setBindGroup(0, bind);
+  pass.draw(3);
+  pass.end();
+  device.queue.submit([enc.finish()]);
+
+  if (running) requestAnimationFrame(frame);
+}
+
+// ================================================================ audio
+// The values below are the tuned defaults from the voice test. The panel writes
+// straight into these, and every node reads from them, so a slider moves the
+// live graph rather than a copy of it.
+const P = {
+  // look
+  lookYaw: 1.15, lookPitch: 0.55,
+  // light / contrast, and the active colour profile
+  blackPoint: 0.085, ambient: 0.30, volGain: 1.0, aoStrength: 1.0,
+  profile: 'cold',
+  // emitters
+  drift: 1.35, eyeY: 0, tumble: 0.100, triggerDist: 34, spacing: 68, spacingJit: 26,
+  autoSpeak: 1,
+  // placement (spatialization)
+  refDist: 4.0, rolloff: 1.35, maxDist: 200,
+  airSlope: 0.41, airMin: 900, levelSlope: 0.085, haasMs: 0.6,
+  // reverb
+  wet: 0.17, dampHz: 2400, tailShape: 1.7, irLen: 2.4,
+  // mix
+  master: 0.9, dry: 0.52, hum: 0.168, duckTo: 0.044, duckMs: 570,
+  // voice bus dynamics
+  vbusThresh: -8, vbusRatio: 12, vbusKnee: 3,
+  // output limiter
+  limThresh: -2, limRatio: 20,
+  // envelope
+  fadeInMs: 12, fadeOutMs: 45, cutMs: 60,
+  // model output normalization target
+  headroom: 0.89,
+  // tail ring repair
+  repairMs: 300, repairDb: 3, repairToHz: 1500,
+  voice: 'af_bella'
+};
+
+let ac = null, master = null, humGain = null, verbIn = null, dryIn = null;
+let voiceBus = null, voiceSum = null, conv = null, damp = null, verbOut = null;
+let lim = null, analyser = null, anBuf = null, softClip = null;
+let spikeNode = null, spikeSink = null;
+let audioReady = false, muted = false;
+let currentSrc = null, currentPanner = null, currentDist = 0;
+
+// ---------------------------------------------------------------- colour profiles
+// Every colour in the shader comes from here, so a profile is a data change rather
+// than a second code path. `invert` flips the finished image: light modes are the
+// same scene with the picture inverted, which preserves all the contrast and ratio
+// work done in the tonemap. Ambient lit floor is the value that most defines the
+// look — near zero in dark modes (unlit surfaces fall to black), high in light
+// modes (surfaces stay visible as pale, because the room is bright).
+const PROFILES = {
+  cold: {
+    label: 'Cold',
+    strip: [0.30, 0.70, 1.00], rack: [0.055, 0.060, 0.072], shell: [0.030, 0.034, 0.044],
+    haze:  [0.004, 0.006, 0.012], cast: [0.92, 0.97, 1.06],
+    exposure: 1.0, tonemap: 1.35, desat: 0.72, invert: 0.0,
+    stripI: 6.50, rackGain: 3.20, shellGain: 2.60, ambLit: 0.02,
+    blackPoint: 0.085, ambient: 0.30,
+  },
+  amber: {
+    label: 'Amber',
+    strip: [1.00, 0.62, 0.26], rack: [0.072, 0.055, 0.042], shell: [0.044, 0.034, 0.026],
+    haze:  [0.012, 0.006, 0.002], cast: [1.06, 0.99, 0.90],
+    exposure: 1.0, tonemap: 1.35, desat: 0.78, invert: 0.0,
+    stripI: 6.50, rackGain: 3.20, shellGain: 2.60, ambLit: 0.02,
+    blackPoint: 0.085, ambient: 0.30,
+  },
+  cyan: {
+    label: 'Cyan',
+    strip: [0.34, 0.98, 0.92], rack: [0.050, 0.068, 0.070], shell: [0.026, 0.040, 0.042],
+    haze:  [0.002, 0.010, 0.012], cast: [0.94, 1.02, 1.03],
+    exposure: 1.05, tonemap: 1.30, desat: 0.68, invert: 0.0,
+    stripI: 6.80, rackGain: 3.30, shellGain: 2.70, ambLit: 0.02,
+    blackPoint: 0.100, ambient: 0.26,
+  },
+  // light modes
+  white: {
+    label: 'White',
+    strip: [1.00, 0.94, 0.86], rack: [0.10, 0.10, 0.105], shell: [0.055, 0.058, 0.065],
+    haze:  [0.030, 0.032, 0.038], cast: [1.00, 1.00, 1.02],
+    exposure: 1.0, tonemap: 1.45, desat: 0.80, invert: 1.0,
+    stripI: 7.00, rackGain: 3.40, shellGain: 2.80, ambLit: 0.04,
+    blackPoint: 0.055, ambient: 0.45,
+  },
+  paper: {
+    label: 'Paper',
+    strip: [1.00, 0.82, 0.62], rack: [0.12, 0.105, 0.085], shell: [0.070, 0.062, 0.050],
+    haze:  [0.040, 0.036, 0.028], cast: [1.01, 0.99, 0.94],
+    exposure: 1.0, tonemap: 1.45, desat: 0.74, invert: 1.0,
+    stripI: 7.00, rackGain: 3.40, shellGain: 2.80, ambLit: 0.05,
+    blackPoint: 0.050, ambient: 0.50,
+  },
+  mint: {
+    label: 'Mint',
+    strip: [0.62, 1.00, 0.86], rack: [0.085, 0.115, 0.100], shell: [0.050, 0.072, 0.062],
+    haze:  [0.026, 0.045, 0.038], cast: [0.985, 1.005, 0.995],
+    exposure: 1.0, tonemap: 1.45, desat: 0.76, invert: 1.0,
+    stripI: 7.00, rackGain: 3.40, shellGain: 2.80, ambLit: 0.05,
+    blackPoint: 0.050, ambient: 0.50,
+  },
+};
+
+function applyProfile(name) {
+  const q = PROFILES[name];
+  if (!q) return;
+  P.profile = name;
+  P.blackPoint = q.blackPoint;
+  P.ambient = q.ambient;
+  if (typeof syncSliders === 'function') syncSliders();
+}
+
+const $ = id => document.getElementById(id);
+
+function setPos(n, x, y, z, t, smooth) {
+  const setP = (p, v) => {
+    if (!p) return;
+    if (smooth != null && p.setTargetAtTime) p.setTargetAtTime(v, t, smooth);
+    else p.value = v;
+  };
+  if (n.positionX) { setP(n.positionX, x); setP(n.positionY, y); setP(n.positionZ, z); }
+  else if (n.setPosition) n.setPosition(x, y, z);
+}
+
+function updateListener() {
+  if (!audioReady) return;
+  const L = ac.listener;
+  const t0 = ac.currentTime;
+  // setTargetAtTime on listener params too — writing them every frame steps the
+  // parameter and can produce the same zipper artefact as the filter.
+  const sp = 0.02;
+  setPos(L, camX, camY, camZ, t0, sp);
+  const f = camF, u = camU;
+  if (L.forwardX) {
+    L.forwardX.setTargetAtTime(f[0], t0, sp); L.forwardY.setTargetAtTime(f[1], t0, sp); L.forwardZ.setTargetAtTime(f[2], t0, sp);
+    L.upX.setTargetAtTime(u[0], t0, sp);      L.upY.setTargetAtTime(u[1], t0, sp);      L.upZ.setTargetAtTime(u[2], t0, sp);
+  } else if (L.setOrientation) {
+    L.setOrientation(f[0], f[1], f[2], u[0], u[1], u[2]);
+  }
+}
+
+function impulse(seconds, decay, sr) {
+  const len = Math.floor(seconds * sr);
+  const buf = ac.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    let lp = 0, lp2 = 0;
+    for (let i = 0; i < len; i++) {
+      const tt = i / len;
+      const n = Math.random() * 2 - 1;
+      lp  += (n  - lp)  * 0.16;
+      lp2 += (lp - lp2) * 0.16;
+      d[i] = lp2 * Math.pow(1 - tt, decay);
+    }
+  }
+  return buf;
+}
+
+function applyIR() {
+  if (!conv || !ac) return;
+  conv.buffer = impulse(P.irLen, P.tailShape, ac.sampleRate);
+  const m = $('irMeta');
+  if (m) m.textContent =
+    `ir regenerated: ${P.irLen.toFixed(2)}s, tail ${P.tailShape.toFixed(2)}, normalize on`;
+}
+
+function initAudio() {
+  if (ac) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  ac = new AC();
+
+  // A browser only grants audio after a real gesture, and the context can still
+  // arrive suspended. Build the graph only once it is genuinely running.
+  const wake = () => {
+    ac.resume().then(() => {
+      if (ac.state !== 'running') return;
+      window.removeEventListener('pointerdown', wake);
+      window.removeEventListener('keydown', wake);
+      if (!master) buildGraph();
+    }).catch(() => {});
+  };
+  wake();
+  window.addEventListener('pointerdown', wake);
+  window.addEventListener('keydown', wake);
+}
+
+function buildGraph() {
+  master = ac.createGain();
+  master.gain.value = 0.0001;
+  master.connect(ac.destination);
+  master.gain.linearRampToValueAtTime(P.master, ac.currentTime + 7);
+
+  // output limiter — 1 ms attack; a 4 ms attack let transients through as a spike
+  lim = ac.createDynamicsCompressor();
+  lim.threshold.value = P.limThresh; lim.knee.value = 1.0;
+  lim.ratio.value = P.limRatio; lim.attack.value = 0.001; lim.release.value = 0.12;
+  master.disconnect();
+  master.connect(lim);
+
+  // Final guarantee. A limiter is a dynamics device: finite attack, and it can be
+  // outrun by a transient. A waveshaper is memoryless — it clamps every sample, so
+  // nothing can leave this graph above the ceiling no matter what upstream does.
+  softClip = ac.createWaveShaper();
+  const N = 4096, curve = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const x = (i / (N - 1)) * 2 - 1;          // -1..1
+    curve[i] = Math.tanh(x * 1.18) * 0.985;   // asymptote just under full scale
+  }
+  softClip.curve = curve;
+  softClip.oversample = '4x';
+  lim.disconnect();
+  lim.connect(softClip);
+
+  analyser = ac.createAnalyser();
+  analyser.fftSize = 2048;
+  anBuf = new Float32Array(analyser.fftSize);
+  softClip.connect(analyser); analyser.connect(ac.destination);
+
+  // silent sink, so the worklet tap is pulled by the graph
+  spikeSink = ac.createGain();
+  spikeSink.gain.value = 0.0;
+  spikeSink.connect(ac.destination);
+
+  // corridor reverb bus. normalize must be ON: the IR is random noise and an
+  // un-normalized one arrives hot (measured peak 1.15, tail clipped).
+  conv = ac.createConvolver();
+  conv.normalize = true;
+  damp = ac.createBiquadFilter();
+  damp.type = 'lowpass'; damp.frequency.value = P.dampHz; damp.Q.value = 0.4;
+  verbIn = ac.createGain(); verbIn.gain.value = 1.0;
+  verbOut = ac.createGain(); verbOut.gain.value = P.wet;
+  verbIn.connect(conv); conv.connect(damp); damp.connect(verbOut); verbOut.connect(master);
+
+  dryIn = ac.createGain(); dryIn.gain.value = P.dry; dryIn.connect(master);
+
+  // voice bus: overlapping lines summed past full scale (measured 1.33, ~490
+  // clipped samples) which is heard as an intermittent spike.
+  voiceSum = ac.createGain(); voiceSum.gain.value = 1.0;
+  voiceBus = ac.createDynamicsCompressor();
+  voiceBus.threshold.value = P.vbusThresh; voiceBus.knee.value = P.vbusKnee;
+  voiceBus.ratio.value = P.vbusRatio; voiceBus.attack.value = 0.001; voiceBus.release.value = 0.15;
+  voiceSum.connect(voiceBus);
+  voiceBus.connect(dryIn); voiceBus.connect(verbIn);
+
+  // hull hum
+  humGain = ac.createGain(); humGain.gain.value = P.hum;
+  for (const [freq, lvl, type] of [[41.2, 0.50, 'sine'], [41.9, 0.42, 'sine'], [55.0, 0.22, 'triangle']]) {
+    const o = ac.createOscillator(); o.type = type; o.frequency.value = freq;
+    const g = ac.createGain(); g.gain.value = lvl;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 190;
+    o.connect(g); g.connect(lp); lp.connect(humGain); o.start();
+  }
+  // airflow: filtered noise, occasionally swelling
+  const len = ac.sampleRate * 4;
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
+  const n = ac.createBufferSource(); n.buffer = buf; n.loop = true;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 430; bp.Q.value = 0.7;
+  const ng = ac.createGain(); ng.gain.value = 0.10;
+  n.connect(bp); bp.connect(ng); ng.connect(humGain); n.start();
+  humGain.connect(master);
+
+  const swell = () => {
+    if (!ac) return;
+    const now = ac.currentTime;
+    ng.gain.cancelScheduledValues(now);
+    ng.gain.setValueAtTime(ng.gain.value, now);
+    ng.gain.linearRampToValueAtTime(0.30, now + 3.5);
+    ng.gain.linearRampToValueAtTime(0.10, now + 13.0);
+    setTimeout(swell, (15 + Math.random() * 30) * 1000);
+  };
+  setTimeout(swell, 9000);
+
+  applyIR();
+  audioReady = true;
+  startSpikeWatcher();
+  meterLoop();
+}
+
+// ---------------------------------------------------------------- spike watcher
+// Sample-accurate peak detection on the real signal, after the limiter. The
+// per-frame meter on the analyser reads one 43 ms snapshot per animation frame,
+// so a transient shorter than that can pass unobserved — which is exactly the
+// kind of event a "spike" is. An AudioWorklet sees every sample.
+function startSpikeWatcher() {
+  const workletSrc = `
+    class SpikeWatcher extends AudioWorkletProcessor {
+      constructor() {
+        super();
+        this.peak = 0; this.rms = 0; this.n = 0;
+        this.lastPost = 0;
+      }
+      process(inputs) {
+        const inp = inputs[0];
+        if (inp && inp[0]) {
+          const chs = inp.length;
+          for (let c = 0; c < chs; c++) {
+            const d = inp[c];
+            for (let i = 0; i < d.length; i++) {
+              const a = d[i] < 0 ? -d[i] : d[i];
+              if (a > this.peak) this.peak = a;
+              this.rms += d[i] * d[i];
+              this.n++;
+            }
+          }
+        }
+        // post roughly every 20 ms
+        if (currentTime - this.lastPost > 0.02) {
+          this.port.postMessage({
+            peak: this.peak,
+            rms: this.n ? Math.sqrt(this.rms / this.n) : 0,
+            clipped: this.peak >= 0.999
+          });
+          this.peak = 0; this.rms = 0; this.n = 0;
+          this.lastPost = currentTime;
+        }
+        return true;
+      }
+  }
+  registerProcessor('spike-watcher', SpikeWatcher);
+  `;
+  try {
+    const url = URL.createObjectURL(new Blob([workletSrc], { type: 'text/javascript' }));
+    ac.audioWorklet.addModule(url).then(() => {
+      spikeNode = new AudioWorkletNode(ac, 'spike-watcher');
+      spikeNode.port.onmessage = (e) => {
+        const { peak, rms, clipped } = e.data;
+        spikePeak = Math.max(spikePeak * 0.90, peak);
+        spikeRms = rms;
+        if (clipped) { spikeEvents++; spikeLast = ac.currentTime; }
+        if (peak > spikeWorst) spikeWorst = peak;
+      };
+      // analyser is the last node before the destination, so tap there
+      analyser.connect(spikeNode);
+      spikeNode.connect(spikeSink);   // unwired gain: forces the graph to pull it
+      vstat('spike watcher active');
+    }).catch(err => {
+      vstat('worklet unavailable: ' + (err && err.message ? err.message : err));
+    });
+  } catch (e) {
+    vstat('worklet init failed');
+  }
+}
+
+let spikePeak = 0, spikeRms = 0, spikeEvents = 0, spikeLast = -99, spikeWorst = 0;
+
+function speak(buf, worldPos) {
+  if (!audioReady) return;
+  const now0 = ac.currentTime;
+
+  // only one voice at a time; cut the previous with a short fade, not a hard stop
+  if (currentSrc) teardownVoice(currentSrc, P.cutMs / 1000, true);
+
+  const src = ac.createBufferSource(); src.buffer = buf;
+
+  // air absorption: distance closes the top end, so far reads as far
+  const air = ac.createBiquadFilter();
+  air.type = 'lowpass'; air.Q.value = 0.5;
+
+  // envelope — a buffer starting or ending mid-waveform steps to zero = a click
+  const env = ac.createGain();
+  const dur0 = buf.duration;
+  const fi = Math.max(0.0005, P.fadeInMs / 1000);
+  const fo = Math.max(0.0005, P.fadeOutMs / 1000);
+  env.gain.setValueAtTime(0.0001, now0);
+  env.gain.linearRampToValueAtTime(1.0, now0 + fi);
+  env.gain.setValueAtTime(1.0, now0 + fi + dur0);
+  env.gain.linearRampToValueAtTime(0.0001, now0 + fi + dur0 + fo);
+
+  // true 3D spatialization: the emitter sits at a fixed point in the corridor and
+  // the listener is the drifting camera, so the voice approaches and passes.
+  const pan = ac.createPanner();
+  pan.panningModel = 'HRTF';
+  pan.distanceModel = 'inverse';
+  pan.refDistance = P.refDist;
+  pan.maxDistance = P.maxDist;
+  pan.rolloffFactor = P.rolloff;
+  setPos(pan, worldPos[0], worldPos[1], worldPos[2]);
+
+  const lg = ac.createGain(); lg.gain.value = 1.0;
+
+  src.connect(air); air.connect(env); env.connect(pan);
+  pan.connect(lg); lg.connect(voiceSum);
+  src.__g = env;
+  currentSrc = src; currentPanner = pan;
+  pan.__wx = worldPos[0]; pan.__wy = worldPos[1]; pan.__wz = worldPos[2];
+  pan.__air = air;   // trackAir reads this to keep absorption on real distance
+
+  // Haas delay on the dry path only, for distance cue
+  const dl = ac.createDelay(); dl.delayTime.value = (P.haasMs / 1000) * 0.5;
+  lg.connect(dl); dl.connect(verbIn);
+  src.__chain = [air, env, pan, lg, dl];
+
+  // duck the hum under the voice
+  const dk = Math.max(0.01, P.duckMs / 1000);
+  humGain.gain.cancelScheduledValues(now0);
+  humGain.gain.setValueAtTime(humGain.gain.value, now0);
+  humGain.gain.linearRampToValueAtTime(P.duckTo, now0 + dk);
+  humGain.gain.setValueAtTime(P.duckTo, now0 + dk + dur0);
+  humGain.gain.linearRampToValueAtTime(P.hum, now0 + dk + dur0 + 1.6);
+
+  src.start(now0 + fi);
+
+  // Release everything this line allocated once it is finished. Nodes left
+  // connected stay alive on the audio thread and keep being pulled every render
+  // quantum, so without this the graph grows by one panner + filters per line.
+  const totalMs = (fi + dur0 + fo + 0.35) * 1000;
+  const thisSrc = src;
+  setTimeout(() => { teardownVoice(thisSrc, 0.02, false); }, totalMs);
+
+  return dur0;
+}
+
+// Disconnect a finished voice: source, filters, panner. `stop` additionally ends
+// playback early (used when a new line interrupts one already speaking).
+function teardownVoice(src, fade, stop) {
+  if (!src) return;
+  try {
+    if (stop) {
+      const g = src.__g, t = ac.currentTime;
+      if (g) {
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(g.gain.value, t);
+        g.gain.linearRampToValueAtTime(0.0001, t + Math.max(0.001, fade));
+      }
+      src.stop(t + Math.max(0.001, fade) + 0.015);
+    } else {
+      src.stop(ac.currentTime + 0.005);
+    }
+  } catch (e) {}
+  // give the fade time to complete before cutting the path
+  setTimeout(() => {
+    try { src.disconnect(); } catch (e) {}
+    const chain = src.__chain || [];
+    for (const n of chain) { try { n.disconnect(); } catch (e) {} }
+    if (currentSrc === src) { currentSrc = null; currentPanner = null; }
+  }, stop ? Math.max(30, fade * 1000 + 30) : 40);
+}
+
+// per-frame: keep the air absorption tracking real distance to the emitter.
+// setTargetAtTime, not `.value`: writing a filter's frequency 80 times a second
+// is zipper noise — it steps the parameter and the filter rings at each step,
+// which is heard as a click. This only shows up while moving past an emitter,
+// so it presents as intermittent.
+let lastAirHz = -1;
+function trackAir() {
+  if (!audioReady || !currentPanner) return;
+  const dx = currentPanner.__wx - camX;
+  const dy = currentPanner.__wy - camY;
+  const dz = currentPanner.__wz - camZ;
+  currentDist = Math.hypot(dx, dy, dz);
+  const a = currentPanner.__air;
+  if (a) {
+    const hz = Math.max(P.airMin, 12000 / (1 + currentDist * P.airSlope));
+    if (Math.abs(hz - lastAirHz) > 1.5) {      // ignore sub-audible drift
+      a.frequency.setTargetAtTime(hz, ac.currentTime, 0.05);
+      lastAirHz = hz;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- emitters
+// Fixed points in the corridor. You drift past them; they speak once, as you
+// come into range. Regenerated ahead of you so the corridor never runs dry.
+const LINES = [
+  'I can hear the fans from here.',
+  'Something is running in the walls.',
+  'You are further in than you think.',
+  'It is quiet in this part.',
+  'I have been here the whole time.',
+  'Do you know what you let in?',
+  'Keep going. There is nothing behind you.',
+  'This is where they keep the cold air.'
+];
+let emitters = [], lineIdx = 0, lastEmit = 60, busy = false, spokenCount = 0, lastRepair = '';
+
+function seedEmitters() {
+  emitters = [];
+  lastEmit = 60;
+  for (let i = 0; i < 4; i++) pushEmitter();
+}
+
+function pushEmitter() {
+  const jit = (Math.random() - 0.5) * P.spacingJit;
+  lastEmit += P.spacing + jit;
+  const x = (Math.random() - 0.5) * 8.0;
+  const y = (Math.random() - 0.5) * 6.0;
+  emitters.push({ x, y, z: lastEmit, done: false });
+}
+
+function serviceEmitters() {
+  if (!running) return;
+  // recycle emitters we have long passed, so the list does not grow forever
+  emitters = emitters.filter(e => e.z > camZ - 120);
+  while (emitters.length < 4) pushEmitter();
+
+  if (!audioReady || !ttsReady || busy || !P.autoSpeak) return;
+
+  // the nearest one ahead that we are within trigger range of
+  let pick = null, bestD = 1e9;
+  for (const e of emitters) {
+    if (e.done) continue;
+    const d = e.z - camZ;
+    if (d > 0 && d < P.triggerDist && d < bestD) { bestD = d; pick = e; }
+  }
+  if (!pick) return;
+  pick.done = true;
+  speakLine(pick);
+}
+
+async function speakLine(e) {
+  if (busy) return;
+  busy = true;
+  try {
+    const text = LINES[lineIdx++ % LINES.length];
+    const audio = await genLine(text);
+    if (audio) {
+      speak(audio, [e.x, e.y, e.z]);
+      spokenCount++;
+      vstat(`emitter z=${e.z.toFixed(0)} · "${text}" · ${lastRepair}`);
+    }
+  } catch (err) {
+    vstat('gen failed: ' + (err && err.message ? err.message : err));
+  }
+  busy = false;
+}
+
+// ---------------------------------------------------------------- tts worker
+// Kokoro runs in a worker: a 90 MB model load and multi-second inference on the
+// main thread would stall the render loop, which is a 200-step raymarch per frame.
+let ttsReady = false, worker = null, genSeq = 0;
+const pending = new Map();
+
+function startWorker() {
+  if (worker) return;
+  const src = `
+    let tts = null, SR = 24000;
+
+    // One-pole lowpass applied only to the tail, and only when the tail is hotter
+    // in its high-frequency content than the body of the line.
+    //
+    // The ring sits at the end of the VOICED audio, not at the end of the buffer —
+    // Kokoro appends ~600 ms of silence, so a window measured from d.length lands
+    // in silence and reports a huge negative dB. Locate the last voiced sample
+    // first, then measure the window ending there.
+    function repairTail(d, sr, ms, dbThresh, toHz) {
+      const L = d.length;
+      let pk = 0;
+      for (let i = 0; i < L; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; }
+      if (pk <= 0) return { applied: false, gainDb: 0, atMs: 0 };
+
+      const vthr = pk * 0.03;
+      let lastVoiced = L - 1;
+      for (let i = L - 1; i >= 0; i--) { if (Math.abs(d[i]) > vthr) { lastVoiced = i; break; } }
+
+      const n = Math.max(64, Math.floor(sr * ms / 1000));
+      if (lastVoiced < n * 2) return { applied: false, gainDb: 0, atMs: 0 };
+      const s = lastVoiced - n + 1;
+
+      // high-frequency proxy: mean |first difference|
+      const hf = (from, to) => {
+        let sum = 0, c = 0;
+        for (let i = Math.max(1, from); i < to; i++) { sum += Math.abs(d[i] - d[i-1]); c++; }
+        return c ? sum / c : 0;
+      };
+
+      const body = hf(Math.floor(lastVoiced * 0.25), Math.max(2, s - 1));
+      const tail = hf(s, lastVoiced + 1);
+      const atMs = Math.round(lastVoiced / sr * 1000);
+      if (body <= 0) return { applied: false, gainDb: 0, atMs };
+
+      const gainDb = 20 * Math.log10((tail + 1e-12) / (body + 1e-12));
+      if (gainDb < dbThresh) return { applied: false, body, tail, gainDb, atMs };
+
+      // Sweep a two-pass RBJ biquad lowpass from 12 kHz down to P.repairToHz
+      // across the tail window. A single one-pole was measured insufficient: it
+      // attenuated the 6-11 kHz ring by only ~6 dB and left its 10.7 kHz peak
+      // intact, which is exactly the harsh ring that was still audible. Two biquad
+      // passes take the same band down ~63 dB while leaving the body of the line
+      // untouched (verified: identical body HF, unchanged peak).
+      const f0 = 12000, f1 = toHz, Q = 0.7;
+      const x1 = [0, 0], x2 = [0, 0], y1 = [0, 0], y2 = [0, 0];
+      for (let i = s; i <= lastVoiced; i++) {
+        const u = (i - s) / n;
+        const f = f0 * Math.pow(f1 / f0, u);
+        const w0 = 2 * Math.PI * f / sr, cw = Math.cos(w0), sw = Math.sin(w0);
+        const al = sw / (2 * Q);
+        const b0 = (1 - cw) / 2, b1 = 1 - cw, b2 = (1 - cw) / 2;
+        const a0 = 1 + al, a1 = -2 * cw, a2 = 1 - al;
+        let x = d[i];
+        for (let p = 0; p < 2; p++) {
+          const y = (b0/a0)*x + (b1/a0)*x1[p] + (b2/a0)*x2[p] - (a1/a0)*y1[p] - (a2/a0)*y2[p];
+          x2[p] = x1[p]; x1[p] = x; y2[p] = y1[p]; y1[p] = y; x = y;
+        }
+        d[i] = x;
+      }
+      return { applied: true, body, tail, gainDb, atMs };
+    }
+
+    self.onmessage = async (e) => {
+      const m = e.data;
+      try {
+        if (m.type === 'init') {
+          self.postMessage({ type: 'status', s: 'fetching runtime' });
+          const mod = await import('https://esm.sh/kokoro-js@1.2.1');
+          self.postMessage({ type: 'status', s: 'loading kokoro-82m (~90 MB first run)' });
+          tts = await mod.KokoroTTS.from_pretrained(
+            'onnx-community/Kokoro-82M-v1.0-ONNX',
+            {
+              // q8 on the WebGPU backend produces gibberish (transformers.js #1317,
+              // hexgrad/kokoro #98). Precision is backend-specific: fp32 on WebGPU,
+              // q8 on WASM. Verified by round-trip transcription.
+              dtype: 'fp32',
+              device: 'webgpu',
+              progress_callback: p => {
+                if (p && typeof p.progress === 'number')
+                  self.postMessage({ type: 'progress', p: p.progress, s: p.status || '' });
+              }
+            }
+          );
+          SR = 24000;
+          self.postMessage({ type: 'ready' });
+          return;
+        }
+        if (m.type === 'say') {
+          const out = await tts.generate(m.text, { voice: m.voice });
+          const data = out.audio;
+          const sr = out.sampling_rate || SR;
+          // normalize + de-click here, off the main thread
+          let pk = 0;
+          for (let i = 0; i < data.length; i++) { const a = Math.abs(data[i]); if (a > pk) pk = a; }
+          if (pk > 0) { const g = m.headroom / pk; for (let i = 0; i < data.length; i++) data[i] *= g; }
+          const fi = Math.min(Math.floor(sr * 0.006), Math.floor(data.length / 4));
+          const fo = Math.min(Math.floor(sr * 0.030), Math.floor(data.length / 4));
+          for (let i = 0; i < fi; i++) data[i] *= i / fi;
+          for (let i = 0; i < fo; i++) data[data.length - 1 - i] *= i / fo;
+
+          // Tail repair. Kokoro intermittently emits a narrowband high-frequency
+          // ring at the very end of a line (measured: 6-11 kHz band 240x hotter
+          // than the same line's body, narrowband peak at 10.7 kHz, 23x band
+          // prominence). Heard as a harsh, high, feedback-like ring. Detect it on
+          // a first-difference (high-pass) proxy and, only where present, sweep a
+          // lowpass down while fading, which removes the ring without touching the
+          // rest of the line.
+          const dx = repairTail(data, sr, m.repairMs, m.repairDb, m.repairToHz);
+          self.postMessage({ type: 'audio', id: m.id, sampleRate: sr, audio: data, dx }, [data.buffer]);
+          return;
+        }
+      } catch (err) {
+        self.postMessage({ type: 'error', id: m && m.id, msg: String(err && err.message || err) });
+      }
+    };
+  `;
+  const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  worker = new Worker(url, { type: 'module' });
+
+  worker.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === 'ready') {
+      ttsReady = true;
+      vstat('voice ready');
+      $('loadmsg').textContent = '';
+    } else if (m.type === 'status') {
+      $('loadmsg').textContent = m.s;
+      vstat(m.s);
+    } else if (m.type === 'progress') {
+      $('loadmsg').textContent = `${m.s} ${Math.round(m.p * 100)}%`;
+    } else if (m.type === 'audio') {
+      const pendingRes = pending.get(m.id);
+      if (pendingRes) {
+        pending.delete(m.id);
+        pendingRes({ sampleRate: m.sampleRate, data: m.audio, dx: m.dx });
+      }
+    } else if (m.type === 'error') {
+      if (m.id && pending.has(m.id)) { pending.get(m.id)(null); pending.delete(m.id); }
+      else vstat('worker error: ' + m.msg);
+    }
+  };
+  worker.postMessage({ type: 'init' });
+}
+
+function genLine(text) {
+  return new Promise((resolve) => {
+    if (!worker || !ttsReady) return resolve(null);
+    const id = ++genSeq;
+    pending.set(id, (r) => {
+      if (!r) return resolve(null);
+      const buf = ac.createBuffer(1, r.data.length, r.sampleRate);
+      buf.copyToChannel(r.data, 0);
+      const d = r.dx;
+      lastRepair = d ? (d.applied
+        ? `tail repaired (+${d.gainDb.toFixed(1)} dB HF)`
+        : `tail clean (${d.gainDb.toFixed(1)} dB HF)`) : '';
+      resolve(buf);
+    });
+    worker.postMessage({ type: 'say', id, text, voice: P.voice, headroom: P.headroom,
+                         repairMs: P.repairMs, repairDb: P.repairDb, repairToHz: P.repairToHz });
+    // never let a stuck generation block the corridor
+    setTimeout(() => { if (pending.has(id)) { pending.delete(id); resolve(null); } }, 45000);
+  });
+}
+
+// ---------------------------------------------------------------- meter
+let clipHold = -1;
+function meterLoop() {
+  if (!analyser) return;
+  analyser.getFloatTimeDomainData(anBuf);
+  let pk = 0, sum = 0, clipped = false;
+  for (let i = 0; i < anBuf.length; i++) {
+    const a = Math.abs(anBuf[i]);
+    if (a > pk) pk = a;
+    if (a >= 0.999) clipped = true;
+    sum += anBuf[i] * anBuf[i];
+  }
+  const rms = Math.sqrt(sum / anBuf.length);
+  const db = x => x > 0 ? (20 * Math.log10(x)) : -Infinity;
+  const norm = x => Math.max(0, Math.min(1, (db(x) + 60) / 60));
+  $('mPeak').style.width = (norm(pk) * 100) + '%';
+  $('mRms').style.width  = (norm(rms) * 100) + '%';
+  $('mPeak').style.background = pk >= 0.999 ? '#e2705f' : '#3a7fb0';
+  $('vPeak').textContent = pk > 0 ? db(pk).toFixed(1) + ' dB' : '-inf';
+  $('vRms').textContent  = rms > 0 ? db(rms).toFixed(1) + ' dB' : '-inf';
+
+  // only latch a clip while the clock runs; currentTime is pinned at 0 when suspended
+  const r = ac && ac.state === 'running';
+  if (clipped && r) clipHold = ac.currentTime;
+  const bad = r && clipHold >= 0 && (ac.currentTime - clipHold) < 1.5;
+  const cl = $('clip');
+  cl.className = bad ? 'bad' : '';
+  // report the sample-accurate worst case, not the once-per-frame snapshot
+  const spk = spikePeak >= 0.999;
+  cl.className = (bad || spk) ? 'bad' : '';
+  cl.textContent = (bad || spk)
+    ? `SPIKE ${db(spikePeak).toFixed(1)} dB`
+    : (r ? `clean · worst ${db(spikeWorst || 1e-9).toFixed(1)} dB` : 'idle');
+  spikePeak *= 0.88;   // decay the spike indicator
+
+  trackAir();
+
+  $('chain').textContent =
+    `voice → air ${Math.max(P.airMin, 12000 / (1 + currentDist * P.airSlope)).toFixed(0)}Hz` +
+    ` → env ${P.fadeInMs}/${P.fadeOutMs}ms → panner ref${P.refDist.toFixed(1)} ro${P.rolloff.toFixed(2)}` +
+    ` (${currentDist.toFixed(1)}m) → bus ${P.vbusThresh}/${P.vbusRatio}:1` +
+    ` → dry ${P.dry.toFixed(2)} + wet ${P.wet.toFixed(2)} → master ${P.master.toFixed(2)}` +
+    ` → lim ${P.limThresh}/${P.limRatio}:1 → out`;
+
+  requestAnimationFrame(meterLoop);
+}
+
+function vstat(s) { const e = $('vstat'); if (e) e.textContent = s; }
+
+// ---------------------------------------------------------------- panel
+const CTL = {};
+function slider(group, key, label, min, max, step, fmt, onChange) {
+  const wrap = document.createElement('div'); wrap.className = 'ctl';
+  const lab = document.createElement('div'); lab.className = 'lab';
+  const nm = document.createElement('span'); nm.textContent = label;
+  const vv = document.createElement('span'); vv.className = 'val';
+  lab.append(nm, vv);
+  const r = document.createElement('input');
+  r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = P[key];
+  r.dataset.key = key;
+  const show = () => { vv.textContent = fmt(P[key]); };
+  r.addEventListener('input', () => { P[key] = parseFloat(r.value); show(); if (onChange) onChange(P[key]); });
+  wrap.append(lab, r);
+  $(group).append(wrap);
+  show();
+  CTL[key] = { r, show };
+  return r;
+}
+
+// After a profile switch the parameter values change underneath the panel, so the
+// sliders and their readouts have to be pulled back into sync.
+function syncSliders() {
+  for (const k of Object.keys(CTL)) {
+    if (typeof P[k] !== 'number') continue;
+    CTL[k].r.value = P[k];
+    CTL[k].show();
+  }
+}
+
+function buildPanel() {
+  // profile picker
+  const pw = document.createElement('div'); pw.className = 'ctl';
+  const pl = document.createElement('div'); pl.className = 'lab';
+  const pn = document.createElement('span'); pn.textContent = 'colour profile';
+  const pv = document.createElement('span'); pv.className = 'val'; pv.id = 'profVal';
+  pl.append(pn, pv);
+  const chips = document.createElement('div'); chips.className = 'chips';
+  for (const key of Object.keys(PROFILES)) {
+    const b = document.createElement('button');
+    b.textContent = PROFILES[key].label;
+    b.dataset.prof = key;
+    b.addEventListener('click', () => { applyProfile(key); markProfile(); });
+    chips.append(b);
+  }
+  pw.append(pl, chips);
+  $('grpEmit').append(pw);
+
+  slider('grpEmit', 'blackPoint', 'black point', 0, 0.35, 0.005, v => v.toFixed(3));
+  slider('grpEmit', 'ambient',    'ambient',     0, 2.0, 0.02,  v => v.toFixed(2));
+  slider('grpEmit', 'volGain',    'volume gain', 0, 4.0, 0.05,  v => v.toFixed(2));
+  slider('grpEmit', 'aoStrength', 'occlusion',   0, 1.5, 0.05,  v => v.toFixed(2));
+  slider('grpEmit', 'lookYaw',     'look range x', 0, 3, 0.05, v => v.toFixed(2));
+  slider('grpEmit', 'lookPitch',   'look range y', 0, 2, 0.05, v => v.toFixed(2));
+  slider('grpEmit', 'triggerDist', 'speak at range', 5, 120, 1, v => v.toFixed(0) + ' u');
+  slider('grpEmit', 'spacing',     'emitter spacing', 20, 200, 1, v => v.toFixed(0) + ' u');
+  slider('grpEmit', 'spacingJit',  'spacing jitter',  0, 80, 1, v => v.toFixed(0) + ' u');
+  slider('grpEmit', 'autoSpeak',   'auto speak',      0, 1, 1, v => v ? 'on' : 'off');
+  slider('grpEmit', 'drift',       'drift speed',     0.1, 4, 0.05, v => v.toFixed(2) + ' u/s');
+  slider('grpEmit', 'eyeY',        'eye height',      -3, 6, 0.1, v => v.toFixed(1));
+  slider('grpEmit', 'tumble',      'tumble',          0, 0.4, 0.005, v => v.toFixed(3));
+
+  slider('grpPlace', 'refDist',   'panner ref dist', 0.5, 30, 0.1, v => v.toFixed(1),
+         v => { if (currentPanner) currentPanner.refDistance = v; });
+  slider('grpPlace', 'rolloff',   'rolloff',         0, 4, 0.05, v => v.toFixed(2),
+         v => { if (currentPanner) currentPanner.rolloffFactor = v; });
+  slider('grpPlace', 'maxDist',   'panner max dist', 20, 500, 5, v => v.toFixed(0),
+         v => { if (currentPanner) currentPanner.maxDistance = v; });
+  slider('grpPlace', 'airSlope',  'air absorption',  0, 0.6, 0.005, v => v.toFixed(3));
+  slider('grpPlace', 'airMin',    'air cutoff min',  200, 4000, 50, v => v.toFixed(0) + ' Hz');
+  slider('grpPlace', 'haasMs',    'haas delay',      0, 6, 0.05, v => v.toFixed(2) + ' ms');
+
+  slider('grpVerb', 'wet',       'wet level',  0, 1.5, 0.01, v => v.toFixed(2),
+         v => { if (verbOut) verbOut.gain.value = v; });
+  slider('grpVerb', 'dampHz',    'damping (lp)', 200, 9000, 50, v => v.toFixed(0) + ' Hz',
+         v => { if (damp) damp.frequency.value = v; });
+  slider('grpVerb', 'tailShape', 'tail shape', 0.5, 8, 0.1, v => v.toFixed(2), () => applyIR());
+  slider('grpVerb', 'irLen',     'ir length',  0.2, 5, 0.1, v => v.toFixed(2) + ' s', () => applyIR());
+
+  slider('grpMix', 'master', 'master',    0, 1.5, 0.01, v => v.toFixed(2),
+         v => { if (master && !muted) master.gain.value = v; });
+  slider('grpMix', 'dry',    'dry level', 0, 1.0, 0.01, v => v.toFixed(2),
+         v => { if (dryIn) dryIn.gain.value = v; });
+  slider('grpMix', 'hum',    'hum level', 0, 0.30, 0.002, v => v.toFixed(3),
+         v => { if (humGain && !currentSrc) humGain.gain.value = v; });
+  slider('grpMix', 'duckTo', 'duck depth', 0, 0.15, 0.002, v => v.toFixed(3));
+  slider('grpMix', 'duckMs', 'duck time', 20, 1200, 10, v => v.toFixed(0) + ' ms');
+
+  slider('grpDyn', 'vbusThresh', 'voice bus thr', -40, 0, 0.5, v => v.toFixed(1) + ' dB',
+         v => { if (voiceBus) voiceBus.threshold.value = v; });
+  slider('grpDyn', 'vbusRatio',  'voice bus ratio', 1, 20, 0.5, v => v.toFixed(1),
+         v => { if (voiceBus) voiceBus.ratio.value = v; });
+  slider('grpDyn', 'vbusKnee',   'voice bus knee', 0, 20, 0.5, v => v.toFixed(1) + ' dB',
+         v => { if (voiceBus) voiceBus.knee.value = v; });
+  slider('grpDyn', 'limThresh',  'limiter thr', -24, 0, 0.5, v => v.toFixed(1) + ' dB',
+         v => { if (lim) lim.threshold.value = v; });
+  slider('grpDyn', 'limRatio',   'limiter ratio', 1, 20, 0.5, v => v.toFixed(1),
+         v => { if (lim) lim.ratio.value = v; });
+
+  slider('grpEnv', 'fadeInMs',  'fade in',  0, 50, 1, v => v.toFixed(0) + ' ms');
+  slider('grpEnv', 'fadeOutMs', 'fade out', 0, 250, 1, v => v.toFixed(0) + ' ms');
+  slider('grpEnv', 'cutMs',     'cut prev', 0, 200, 1, v => v.toFixed(0) + ' ms');
+  slider('grpEnv', 'headroom',  'line headroom', 0.2, 1.0, 0.01, v => v.toFixed(2));
+  slider('grpEnv', 'repairDb',  'tail repair thr', 0, 30, 0.5, v => v.toFixed(1) + ' dB');
+  slider('grpEnv', 'repairMs',  'tail length', 40, 800, 10, v => v.toFixed(0) + ' ms');
+  slider('grpEnv', 'repairToHz','tail sweep to', 300, 6000, 50, v => v.toFixed(0) + ' Hz');
+}
+
+function markProfile() {
+  document.querySelectorAll('#panel .chips button').forEach(b => {
+    b.classList.toggle('on', b.dataset.prof === P.profile);
+  });
+  const pv = $('profVal');
+  if (pv) pv.textContent = PROFILES[P.profile].label;
+}
+
+function cycleProfile(step) {
+  const keys = Object.keys(PROFILES);
+  const i = keys.indexOf(P.profile);
+  applyProfile(keys[(i + step + keys.length) % keys.length]);
+  markProfile();
+}
+
+// ---------------------------------------------------------------- wiring
+function toggleMute() {
+  if (!audioReady) return;
+  const now = ac.currentTime;
+  muted = !muted;
+  const to = muted ? 0.0001 : P.master;
+  master.gain.cancelScheduledValues(now);
+  master.gain.setValueAtTime(master.gain.value, now);
+  master.gain.linearRampToValueAtTime(to, now + 0.35);
+}
+
+function togglePanel() {
+  const p = $('panel');
+  p.classList.toggle('hid');
+  $('meter').classList.toggle('show', !p.classList.contains('hid'));
+}
+
+$('toggle').addEventListener('click', togglePanel);
+window.addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k === 'p') togglePanel();
+  else if (k === 'm') toggleMute();
+  else if (k === 'c') cycleProfile(1);
+  else if (k === 'x') cycleProfile(-1);
+  else if (k === 'v') {
+    // speak now, at a point just ahead of the camera
+    if (!ttsReady || busy) { vstat(ttsReady ? 'busy' : 'voice not ready'); return; }
+    speakLine({ x: camX + (Math.random() - 0.5) * 3, y: camY, z: camZ + 14 });
+  }
+});
+
+buildPanel();
+markProfile();
+seedEmitters();
+resize();
+device.queue.writeBuffer(uniBuf, 0, U);
+frame(performance.now());   // one frame behind the gate so it is not a black screen
+
+document.getElementById('enter').addEventListener('click', () => {
+  document.getElementById('enter').style.display = 'none';
+  document.getElementById('hint').classList.add('on');
+  initAudio();
+  startWorker();     // begin the model load only after the user has opted in
+  running = true;
+  prev = 0;
+  requestAnimationFrame(frame);
+}, { once: true });
+</script>
+</body>
+</html>
